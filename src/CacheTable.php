@@ -10,7 +10,7 @@
 namespace xavier\swoole;
 
 use think\Config;
-
+use Swoole\Table;
 /**
  * 基于Swoole_table的高速缓存
  * Class Cache
@@ -27,9 +27,9 @@ class CacheTable
         $cache_data_size = $cache_data_size ? $cache_data_size :  1024;
         $cache_size      = $cache_size ? $cache_size : 1024 * 1024;
 
-        $this->table = new \swoole_table($cache_size);
-        $this->table->column('time', \swoole_table::TYPE_INT, 15);
-        $this->table->column('data', \swoole_table::TYPE_STRING, $cache_data_size);
+        $this->table = new Table($cache_size);
+        $this->table->column('time', Table::TYPE_INT, 15);
+        $this->table->column('data', Table::TYPE_STRING, $cache_data_size);
         $this->table->create();
     }
 

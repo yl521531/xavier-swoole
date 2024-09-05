@@ -105,7 +105,6 @@ class Swoole extends Command
         if ($ssl) {
             $type = SWOOLE_SOCK_TCP | SWOOLE_SSL;
         }
-
         $swoole = new HttpServer($host, $port, $mode, $type);
         $swoole->setHttp($swoole);
         // 开启守护进程模式
@@ -113,10 +112,8 @@ class Swoole extends Command
             $this->config['daemonize'] = 1;
         }
 
-
         // 设置应用目录
         $swoole->setAppPath($this->config['app_path']);
-
         $swoole->cachetable();
         // 创建内存表
         if (!empty($this->config['table'])) {

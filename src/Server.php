@@ -43,7 +43,7 @@ abstract class Server
      * 监听地址
      * @var string
      */
-    protected $host = '0.0.0.0';
+    protected $host = '127.0.0.1';
 
     /**
      * 监听端口

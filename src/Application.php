@@ -22,6 +22,8 @@ use think\Cache;
 class Application extends App
 {
     private static $swoole = null;
+    public $beginTime;
+    public $beginMem;
 
     /**
      * 处理Swoole请求
@@ -82,6 +84,8 @@ class Application extends App
                     $server->push($fd,$frame->data);
                 }
             }
+            if(isset($frame->fd))
+            $server->push($frame->fd,$frame->data);//TODO 处理其他事务 后期需要完善
             // 重置应用的开始时间和内存占用
             $this->beginTime = microtime(true);
             $this->beginMem  = memory_get_usage();
@@ -90,12 +94,13 @@ class Application extends App
             $_GET    =  isset($request['arguments']['get'])?$request['arguments']['get']:[];
             $_POST   = isset($request['arguments']['post'])?$request['arguments']['post']:[];
             $_FILES  =  isset($request['arguments']['files'])?$request['arguments']['files']:[];
-            $_SERVER["PATH_INFO"] = $request['url'] ?: '/';
-            $_SERVER["REQUEST_URI"] = $request['url'] ?: '/';
+            $_SERVER["PATH_INFO"] = isset($request['url'])?$request['url'] : '/';
+            $_SERVER["REQUEST_URI"] = isset($request['url'])?$request['url'] : '/';
             $_SERVER["SERVER_PROTOCOL"] = 'http';
             $_SERVER["REQUEST_METHOD"]  = 'post';
 
             $_SERVER['HTTP_HOST'] = Config::get('app_host') ? Config::get('app_host') : "127.0.0.1";
+            $_SERVER['REMOTE_ADDR'] = Config::get('app_host') ? Config::get('app_host') : "127.0.0.1";
             $_SERVER['argv'][1] = $_SERVER["PATH_INFO"];
             $resp               = $this->run();            
         } catch (HttpException $e) {

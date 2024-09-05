@@ -10,6 +10,7 @@ namespace xavier\swoole;
 use Swoole\Http\Server as HttpServer;
 use Swoole\WebSocket\Server as WebSocketServer;
 use Swoole\Table;
+use Swoole\Timer;
 use think\Error;
 use Swoole\Http\Request as SwooleRequest;
 use Swoole\Http\Response as SwooleResponse;
@@ -49,13 +50,18 @@ class Http extends Server
      */
     public function __construct($host, $port, $mode = SWOOLE_PROCESS, $sockType = SWOOLE_SOCK_TCP)
     {
-        $this->server_type = Config::get('swoole.server_type');
+        $this->server_type = $sockType??Config::get('swoole.server_type');
         switch ($this->server_type) {
+            case 'socket':
             case 'websocket':
-                $this->swoole = new WebSocketServer($host, $port, $mode, SWOOLE_SOCK_TCP);
+                $this->swoole = new WebSocketServer($host, $port);
                 break;
-            default:
-                $this->swoole = new HttpServer($host, $port, $mode, SWOOLE_SOCK_TCP);
+            case 'http':
+                $this->swoole = new HttpServer($host, $port);
+                break;
+                default:
+                    $this->swoole = new SwooleServer($host, $port, $mode,$sockType);
+
         }
         if ("process"==Config::get('swoole.queue_type')){
             $process=new QueueProcess();
@@ -103,6 +109,9 @@ class Http extends Server
 
     public function option(array $option)
     {
+        $swooleLog = ['log_level' => SWOOLE_LOG_ERROR];// 设置日志等级
+        $option = array_merge($option, $swooleLog);
+        unset($option['host'], $option['port'], $option['mode'], $option['sock_type'], $option['app_path']);
         // 设置参数
         if (!empty($option)) {
             $this->swoole->set($option);
@@ -115,7 +124,7 @@ class Http extends Server
                 $this->swoole->on($event, [$this, 'on' . $event]);
             }
         }
-		if ("websocket" == $this->server_type) {
+		if ("socket" == $this->server_type) {
             foreach ($this->event as $event) {
                 if (method_exists($this, 'Websocketon' . $event)) {
                     $this->swoole->on($event, [$this, 'Websocketon' . $event]);
@@ -189,7 +198,7 @@ class Http extends Server
         $paths = $this->monitor['path'] ?: [APP_PATH];
         $timer = $this->monitor['interval'] ?: 2;
 
-        $server->tick($timer, function () use ($paths, $server) {
+        Timer::tick($timer, function () use ($paths, $server) {
             foreach ($paths as $path) {
                 $dir      = new \RecursiveDirectoryIterator($path);
                 $iterator = new \RecursiveIteratorIterator($dir);
@@ -219,13 +228,13 @@ class Http extends Server
         if ($timer) {
             $interval = $interval > 0 ? $interval : 1000;
             $systimer = Timer::instance();
-            
-            $server->tick($interval, function () use ($systimer, $server) {
+
+            Timer::tick($interval, function () use ($systimer, $server) {
                 $systimer->run($server);
             });
         }
         $task     = QueueTask::instance();
-        $server->tick(1000, function () use ($queue_type,$task) {
+        Timer::tick(1000, function () use ($queue_type,$task) {
             if ("task"==$queue_type){
                 $task->run();
             }
