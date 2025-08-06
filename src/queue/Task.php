@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 namespace xavier\swoole\queue;
 
 use xavier\swoole\Task as SwooleTask;
@@ -12,6 +13,7 @@ class Task extends Queue
 {
     private static $timerlists = [];
     private static $instance = null;
+
     public function __construct()
     {
         $this->getConfig();
@@ -34,11 +36,11 @@ class Task extends Queue
      */
     public function run()
     {
-        foreach($this->config as $key=>$val){
-            if ($this->config[$key]["nexttime"]<=time()){
-                $this->config[$key]["nexttime"]=time()+$val['sleep'];
-                for ($i=0; $i < $val['nums']; $i++) {
-                    $this->job($key,$val);
+        foreach ($this->config as $key => $val) {
+            if ($this->config[$key]["nexttime"] <= time()) {
+                $this->config[$key]["nexttime"] = time() + $val['sleep'];
+                for ($i = 0; $i < $val['nums']; $i++) {
+                    $this->job($key, $val);
                 }
             }
         }
@@ -46,18 +48,21 @@ class Task extends Queue
 
     public function initTimerLists()
     {
-		if (!empty($this->config))
-        foreach($this->config as $key=>$val){
-            $this->config[$key]["nexttime"]=time();
-        }
+        if (!empty($this->config))
+            foreach ($this->config as $key => $val) {
+                $this->config[$key]["nexttime"] = time();
+            }
     }
 
-    public function job($key,$val)
+    // 在 src/queue/Task.php 的 job 方法中使用
+    public function job($key, $val)
     {
-        SwooleTask::async(function ($serv, $task_id, $data) use($key,$val){
-            $worker=new Worker();
-            $worker->pop($key,$val['delay'],0,$val['maxTries']);
-            unset($worker);
+        go(function () use ($key, $val) {
+            // 对相同 $key 的任务加锁，避免并发处理
+            CoroutineLock::runWithLock("queue_{$key}", function () use ($key, $val) {
+                $worker = new Worker();
+                $worker->pop($key, $val['delay'], 0, $val['maxTries']);
+            });
         });
     }
 }
