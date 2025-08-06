@@ -44,7 +44,15 @@ class Swoole extends Command
             $output->writeln("<error>Invalid argument action:{$action}, Expected start|stop|restart|reload .</error>");
         }
     }
-
+// 新增 reloadConfig 方法
+    protected function reloadConfig()
+    {
+        $pid = $this->getMasterPid();
+        if ($this->isRunning($pid)) {
+            Process::kill($pid, SIGUSR2); // 发送自定义信号触发配置重载
+            $this->output->writeln('Config reloaded successfully');
+        }
+    }
     protected function init()
     {
         //配置文件需要在application/extra下

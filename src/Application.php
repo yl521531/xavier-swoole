@@ -65,7 +65,9 @@ class Application extends App
         } catch (\Exception $e) {
             $this->exception($response, $e);
         } catch (\Throwable $e) {
-            $this->exception($response, $e);
+            // 记录协程/请求异常
+            \think\Log::error("Request error: {$e->getMessage()}\n{$e->getTraceAsString()}");
+            $response->status(500)->end("Server Error");
         }
     }
 

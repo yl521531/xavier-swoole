@@ -35,4 +35,14 @@ class Queue
         }
         return false;
     }
+    // 在 src/queue/Task.php 中新增析构函数
+    public function __destruct()
+    {
+        // 清理静态变量，避免协程间资源污染
+        self::$timerlists = [];
+        // 释放可能的循环引用
+        if (isset(self::$instance)) {
+            self::$instance = null;
+        }
+    }
 }
