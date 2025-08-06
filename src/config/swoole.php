@@ -1,4 +1,5 @@
 <?php
+
 return [
     'host'                  => '0.0.0.0', // 监听地址
     'port'                  => 9501, // 监听端口
@@ -16,7 +17,10 @@ return [
     //'enable_static_handler' => true,
     //'daemonize'                => true,
     'worker_num'            => 8,    //worker process num
-    'max_request'           => 10000,
+    'max_request'           => 5000,
     'timer'                 => true,//开启系统定时器
     'interval'              => 500,//开启系统定时器
+    'enable_coroutine'      => true,//开启协程
+   'max_coroutine'         => 100000,//最大协程数
+    'task_max_request' => 3000, // Task 进程最大处理数
 ];
