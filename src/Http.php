@@ -52,16 +52,16 @@ class Http extends Server
     {
         $this->server_type = $sockType??Config::get('swoole.server_type');
         switch ($this->server_type) {
-            case 'socket':
             case 'websocket':
-                $this->swoole = new WebSocketServer($host, $port);
+                $this->swoole = new WebSocketServer($host, $port, $mode, SWOOLE_SOCK_TCP);
                 break;
-            case 'http':
-                $this->swoole = new HttpServer($host, $port);
+            case 'mixed': // 同时支持 HTTP 和 WebSocket
+                $this->swoole = new WebSocketServer($host, $port, $mode, SWOOLE_SOCK_TCP);
+                // 注册 HTTP 回调（4.0+ 中 WebSocketServer 可直接处理 HTTP 请求）
+                $this->swoole->on('Request', [$this, 'onRequest']);
                 break;
-                default:
-                    $this->swoole = new SwooleServer($host, $port, $mode,$sockType);
-
+            default:
+                $this->swoole = new HttpServer($host, $port, $mode, SWOOLE_SOCK_TCP);
         }
         if ("process"==Config::get('swoole.queue_type')){
             $process=new QueueProcess();
@@ -220,25 +220,32 @@ class Http extends Server
         });
     }
 
+    // 修改 src/Http.php 的 timer 方法
     public function timer($server)
     {
-        $timer    = Config::get('swoole.timer');
-        $interval = intval(Config::get('swoole.interval'));
-        $queue_type    = Config::get('swoole.queue_type');
-        if ($timer) {
-            $interval = $interval > 0 ? $interval : 1000;
-            $systimer = Timer::instance();
+        $timer = Config::get('swoole.timer');
+        $interval = intval(Config::get('swoole.interval')) ?: 1000;
+        $queueType = Config::get('swoole.queue_type');
 
-            Timer::tick($interval, function () use ($systimer, $server) {
-                $systimer->run($server);
+        if ($timer) {
+            $systimer = Timer::instance();
+            // 4.0+ 推荐使用 swoole_timer_tick（支持协程环境）
+            swoole_timer_tick($interval, function () use ($systimer, $server) {
+                // 在协程中执行定时任务，避免阻塞
+                go(function () use ($systimer, $server) {
+                    $systimer->run($server);
+                });
             });
         }
-        $task     = QueueTask::instance();
-        Timer::tick(1000, function () use ($queue_type,$task) {
-            if ("task"==$queue_type){
-                $task->run();
-            }
-        });
+
+        if ("task" == $queueType) {
+            $task = QueueTask::instance();
+            swoole_timer_tick(1000, function () use ($task) {
+                go(function () use ($task) {
+                    $task->run(); // 协程内执行队列调度
+                });
+            });
+        }
     }
 
     /**
