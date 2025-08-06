@@ -46,9 +46,15 @@ class WebSocketFrame implements \ArrayAccess
         return $this->frame;
     }
 
+    // 修改 src/WebSocketFrame.php 的 getData 方法（假设存在）
     public function getData()
     {
-        return $this->data;
+        $frame = $this->frame;
+        // 4.0+ 中 $frame->data 直接获取内容，$frame->opcode 表示帧类型
+        if ($frame->opcode == SWOOLE_WEBSOCKET_OPCODE_TEXT) {
+            return json_decode($frame->data, true); // 文本帧解析
+        }
+        return $frame->data; // 二进制帧直接返回
     }
 
     public function getArgs()
