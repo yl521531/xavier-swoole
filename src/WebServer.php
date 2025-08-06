@@ -213,8 +213,9 @@ class WebServer extends Server
 
     }
 
-    public function onTask(HttpServer $serv, $task_id, $fromWorkerId, $data)
+    public function onTask(\Swoole\Server $serv, $task_id, $fromWorkerId, $data)
     {
+        // 原有逻辑保持不变，但参数类型提示更新为 4.0+ 兼容的 \Swoole\Server
         if (is_string($data) && class_exists($data)) {
             $taskObj = new $data;
             if (method_exists($taskObj, 'run')) {
